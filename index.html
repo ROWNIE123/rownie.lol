@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rownie.lol</title>
+  <meta name="description" content="A playground of activites.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <h1 class="logo">ROWNIE.lol</h1>
+      <nav class="nav">
+        <button class="nav-btn" data-view="home" aria-pressed="true">Home</button>
+        <button class="nav-btn" data-view="plaza">Plaza</button>
+        <button class="nav-btn" data-view="about">About</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="app" class="wrap">
+    <!-- Home View -->
+    <section id="home" class="view is-active" aria-label="Game grid">
+      <div class="grid">
+        <article class="card" data-open="reaction">
+          <div class="card-body">
+            <h2>Reaction Time</h2>
+            <p>Wait for green, then click. Can you beat 200ms?</p>
+          </div>
+          <footer>Play →</footer>
+        </article>
+
+        <article class="card" data-open="guess">
+          <div class="card-body">
+            <h2>Higher or Lower</h2>
+            <p>Guess the secret number (1–100) in as few tries as possible.</p>
+          </div>
+          <footer>Play →</footer>
+        </article>
+
+        <article class="card" data-open="scramble">
+          <div class="card-body">
+            <h2>Word Scramble</h2>
+            <p>Unscramble the word before time runs out.</p>
+          </div>
+          <footer>Play →</footer>
+        </article>
+
+        <article class="card" data-open="painter">
+          <div class="card-body">
+            <h2>Pixel Painter</h2>
+            <p>Click to paint pixels. Export your tiny masterpiece.</p>
+          </div>
+          <footer>Play →</footer>
+        </article>
+
+        <article class="card" data-open="snake">
+          <div class="card-body">
+            <h2>Snake</h2>
+            <p>Eat apples, grow longer. Don’t hit the wall or yourself.</p>
+          </div>
+          <footer>Play →</footer>
+        </article>
+
+        <article class="card" data-open="memory">
+          <div class="card-body">
+            <h2>Memory Flip</h2>
+            <p>Flip two cards to find pairs. Clear the board fast.</p>
+          </div>
+          <footer>Play →</footer>
+        </article>
+
+        <article class="card" data-open="dino">
+          <div class="card-body">
+            <h2>Cube Jump</h2>
+            <p>Space to jump, ↓ to duck. How far can you go?</p>
+          </div>
+          <footer>Play →</footer>
+        </article>
+      </div>
+    </section>
+
+    <!-- Reaction Game -->
+    <section id="reaction" class="view" aria-label="Reaction Time game">
+      <button class="back" data-view="home">← Back</button>
+      <h2>Reaction Time</h2>
+      <div class="panel">
+        <p id="reaction-instructions">Click when it turns green.</p>
+        <div id="reaction-pad" class="reaction waiting" role="button" tabindex="0" aria-label="Reaction pad"></div>
+        <div class="stats">
+          <div><span id="reaction-last">—</span><small>Last</small></div>
+          <div><span id="reaction-best">—</span><small>Best</small></div>
+          <div><span id="reaction-avg">—</span><small>Average</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Guess Game -->
+    <section id="guess" class="view" aria-label="Higher or Lower game">
+      <button class="back" data-view="home">← Back</button>
+      <h2>Higher or Lower</h2>
+      <div class="panel">
+        <p>I'm thinking of a number from <strong>1</strong> to <strong>100</strong>.</p>
+        <form id="guess-form" class="row" autocomplete="off">
+          <input id="guess-input" type="number" min="1" max="100" required placeholder="Enter a guess…" />
+          <button class="btn" type="submit">Guess</button>
+          <button class="btn ghost" type="button" id="guess-reset">Reset</button>
+        </form>
+        <p id="guess-feedback" class="feedback">Make a guess to begin.</p>
+        <ul id="guess-history" class="pill-list" aria-live="polite"></ul>
+      </div>
+    </section>
+
+    <!-- Word Scramble -->
+    <section id="scramble" class="view" aria-label="Word Scramble game">
+      <button class="back" data-view="home">← Back</button>
+      <h2>Word Scramble</h2>
+      <div class="panel">
+        <p>Unscramble the word before the timer hits zero.</p>
+        <div class="scramble-row">
+          <div class="scramble-box">
+            <span id="scramble-word">—</span>
+          </div>
+          <div class="timer" id="scramble-timer" aria-live="polite">30</div>
+        </div>
+        <form id="scramble-form" class="row">
+          <input id="scramble-input" type="text" spellcheck="false" placeholder="Type your answer…" />
+          <button class="btn" type="submit">Submit</button>
+          <button class="btn ghost" type="button" id="scramble-new">New Word</button>
+        </form>
+        <p id="scramble-feedback" class="feedback"></p>
+      </div>
+    </section>
+
+    <!-- Pixel Painter -->
+    <section id="painter" class="view" aria-label="Pixel Painter">
+      <button class="back" data-view="home">← Back</button>
+      <h2>Pixel Painter</h2>
+      <div class="panel">
+        <div class="row" style="margin-bottom:8px">
+          <label>Size:
+            <select id="paint-size">
+              <option value="16">16×16</option>
+              <option value="24" selected>24×24</option>
+              <option value="32">32×32</option>
+            </select>
+          </label>
+          <input type="color" id="paint-color" value="#6ae3ff" title="Primary color"/>
+          <input type="color" id="paint-bg" value="#0f1115" title="Background color"/>
+          <button class="btn" id="paint-clear">Clear</button>
+          <button class="btn ghost" id="paint-export">Export PNG</button>
+        </div>
+        <canvas id="paint-canvas" width="384" height="384" class="game-canvas tight" aria-label="Pixel Painter canvas"></canvas>
+        <p class="feedback">Left click to paint, right click to erase. Hold and drag to draw.</p>
+      </div>
+    </section>
+
+    <!-- Snake -->
+    <section id="snake" class="view" aria-label="Snake game">
+      <button class="back" data-view="home">← Back</button>
+      <h2>Snake</h2>
+      <div class="panel">
+        <canvas id="snake-canvas" width="400" height="400" class="game-canvas tight" aria-label="Snake canvas"></canvas>
+        <div class="row">
+          <button class="btn" id="snake-start">Start</button>
+          <button class="btn ghost" id="snake-pause">Pause</button>
+          <span class="meta">Score: <strong id="snake-score">0</strong> • Best: <strong id="snake-best">0</strong></span>
+        </div>
+        <p class="feedback">Use arrow keys or WASD to move.</p>
+      </div>
+    </section>
+
+    <!-- Memory Flip -->
+    <section id="memory" class="view" aria-label="Memory Flip game">
+      <button class="back" data-view="home">← Back</button>
+      <h2>Memory Flip</h2>
+      <div class="panel">
+        <div class="row" style="margin-bottom:8px">
+          <label>Size:
+            <select id="mem-size">
+              <option value="4x4" selected>4×4</option>
+              <option value="6x4">6×4</option>
+            </select>
+          </label>
+          <button class="btn" id="mem-new">New Game</button>
+          <span class="meta">Moves: <strong id="mem-moves">0</strong> • Time: <strong id="mem-time">0</strong>s • Best: <strong id="mem-best">—</strong></span>
+        </div>
+        <div id="mem-grid" class="mem-grid" role="grid" aria-label="Memory grid"></div>
+        <p class="feedback" id="mem-feedback"></p>
+      </div>
+    </section>
+
+    <!-- Dino Run -->
+    <section id="dino" class="view" aria-label="Chrome Dino style game">
+      <button class="back" data-view="home">← Back</button>
+      <h2>Cube Jump</h2>
+      <div class="panel">
+        <canvas id="dino-canvas" width="640" height="200" class="game-canvas" aria-label="Dino game canvas"></canvas>
+        <div class="row">
+          <button class="btn" id="dino-start">Start</button>
+          <span class="meta">Score: <strong id="dino-score">0</strong> • Best: <strong id="dino-best">0</strong></span>
+        </div>
+        <p class="feedback">Space = jump • ↓ = duck</p>
+      </div>
+    </section>
+
+
+    <!-- Plaza hub -->
+    <section id="plaza" class="view" aria-label="Plaza">
+      <h2 class="plaza-title">Plaza</h2>
+      <p class="plaza-sub">Flashy fun</p>
+  <div class="plaza-wallet">
+    <span class="label">Balance:</span>
+    <span class="amount"><strong id="plaza-balance">0</strong> shillings</span>
+    <button class="btn ghost sm" id="plaza-reset">Reset</button>
+    <button class="btn ghost sm" id="plaza-edit">Edit</button>
+  </div>
+      <div class="grid">
+        <article class="card plaza" data-open="wheel">
+          <div class="card-body">
+            <h2>The Wheel</h2>
+            <p>Spin a colorful wheel, see where it lands.</p>
+          </div>
+          <footer>Open →</footer>
+        </article>
+        <article class="card plaza" data-open="treasure">
+          <div class="card-body">
+            <h2>Treasure Grid</h2>
+            <p>Pick safe tiles, avoid traps.</p>
+          </div>
+          <footer>Open →</footer>
+        </article>
+        <article class="card plaza" data-open="dropzone">
+          <div class="card-body">
+            <h2>Drop Zone</h2>
+            <p>Drop a ball through pegs into slots.</p>
+          </div>
+          <footer>Open →</footer>
+        </article>
+        <article class="card plaza" data-open="twentyone">
+          <div class="card-body">
+            <h2>21 Challenge</h2>
+            <p>Hit or stand vs dealer.</p>
+          </div>
+          <footer>Open →</footer>
+        </article>
+      </div>
+    </section>
+
+    <!-- Plaza game shells -->
+    <section id="wheel" class="view" aria-label="The Wheel">
+      <button class="back" data-view="plaza">← Plaza</button>
+      <h2>The Wheel</h2>
+      <div class="panel">
+  <div class="row" style="margin-bottom:10px">
+    <label>Bet amount:
+      <input id="wheel-bet-amount" type="number" value="100" min="1" style="width:100px"/>
+    </label>
+    <label>Pick number:
+      <input id="wheel-bet-number" type="number" min="0" max="36" placeholder="0-36" style="width:80px"/>
+    </label>
+  </div>
+
+  <div class="row bet-buttons" style="margin-bottom:10px">
+    <button class="btn ghost" data-bet="red">Red</button>
+    <button class="btn ghost" data-bet="black">Black</button>
+    <button class="btn ghost" data-bet="even">Even</button>
+    <button class="btn ghost" data-bet="odd">Odd</button>
+    <button class="btn ghost" data-bet="low">1–18</button>
+    <button class="btn ghost" data-bet="high">19–36</button>
+  </div>
+
+  <button class="btn" id="wheel-spin">Spin</button>
+  <p class="feedback" id="wheel-result">Place your bets!</p>
+  <p class="meta">Balance: <strong id="wheel-balance">10000</strong> shillings</p>
+  <div id="wheel-history" class="pill-list"></div>
+  <div id="wheel-container">
+  <div id="wheel-arrow"></div>
+  <canvas id="wheel-canvas" width="320" height="320" class="game-canvas tight"></canvas>
+</div>
+
+</div>
+
+    </section>
+
+    <section id="treasure" class="view" aria-label="Treasure Grid">
+      <button class="back" data-view="plaza">← Plaza</button>
+      <h2>Treasure Grid</h2>
+     <div class="panel">
+  <div class="row" style="margin-bottom:10px">
+    <label>Bet:
+      <input id="mines-bet" type="number" min="1" value="100" style="width:110px"/>
+    </label>
+    <label>Mines:
+      <select id="mines-count" style="width:90px">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+        <option value="10">10</option>
+      </select>
+    </label>
+    <button class="btn" id="mines-start">Bet</button>
+    <button class="btn ghost" id="mines-cashout" disabled>Cashout</button>
+    <span class="meta">Balance: <strong id="mines-balance">0</strong> shillings</span>
+  </div>
+
+  <div id="mines-board" class="mines-board" aria-label="Treasure grid"></div>
+
+  <div class="row" style="margin-top:10px">
+    <span class="meta">Safe picks: <strong id="mines-safe">0</strong></span>
+    <span class="meta">Current cashout: <strong id="mines-cash">0</strong> shillings</span>
+    <span class="meta">Status: <strong id="mines-status">Place a bet</strong></span>
+  </div>
+</div>
+
+    </section>
+
+    <section id="dropzone" class="view" aria-label="Drop Zone">
+      <button class="back" data-view="plaza">← Plaza</button>
+      <h2>Drop Zone</h2>
+     <div class="panel">
+<div class="row" style="margin-bottom:10px">
+  <label>Bet:
+    <input id="dz-bet" type="number" min="1" value="100" style="width:110px"/>
+  </label>
+  <label>Start column:
+    <input id="dz-col" type="range" min="0" max="12" value="6" />
+  </label>
+  <label><strong>Balls:</strong>
+    <input id="dz-count" type="number" min="1" max="10" value="1" style="width:70px"/>
+  </label>
+  <button class="btn" id="dz-drop">Drop</button>
+  <span class="meta">Balance: <strong id="dz-balance">0</strong> shillings</span>
+</div>
+
+  <div class="dz-wrap">
+    <canvas id="dz-canvas" width="360" height="420" class="game-canvas tight"></canvas>
+    <div id="dz-mults" class="dz-mults"></div>
+  </div>
+
+  <p class="feedback" id="dz-status">Place a bet and press Drop.</p>
+</div>
+
+    </section>
+
+    <section id="twentyone" class="view" aria-label="21 Challenge">
+      <button class="back" data-view="plaza">← Plaza</button>
+      <h2>21 Challenge</h2>
+     <div class="panel">
+  <div class="row" style="margin-bottom:10px">
+    <label>Bet:
+      <input id="bj-bet" type="number" min="1" value="100" style="width:110px"/>
+    </label>
+    <button class="btn" id="bj-deal">Deal</button>
+    <button class="btn ghost" id="bj-hit"  disabled>Hit</button>
+    <button class="btn ghost" id="bj-stand" disabled>Stand</button>
+    <span class="meta">Balance: <strong id="bj-balance">0</strong> shillings</span>
+  </div>
+
+  <div class="bj-table">
+    <div class="bj-row">
+      <div>
+        <div class="bj-label">Dealer</div>
+        <div id="bj-dealer" class="bj-hand"></div>
+        <div class="bj-score" id="bj-score-dealer">—</div>
+      </div>
+    </div>
+    <div class="bj-row">
+      <div>
+        <div class="bj-label">You</div>
+        <div id="bj-player" class="bj-hand"></div>
+        <div class="bj-score" id="bj-score-player">—</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="feedback" id="bj-status">Place a bet and press Deal.</p>
+</div>
+
+    </section>
+    
+    <!-- About -->
+    <section id="about" class="view" aria-label="About Page">
+      <button class="back" data-view="home">← Back</button>
+      <h2>About</h2>
+      <div class="panel">
+        <p>It's a dark age for front end developers</p>
+        <p>Mr.Silver was here</code>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Entirely Vibe Coded. Made with GPT5 — <a href="#" id="toggle-theme" role="button">Toggle Theme</a></p>
+    </div>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
