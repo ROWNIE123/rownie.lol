@@ -81,6 +81,24 @@
           </div>
           <footer>Play →</footer>
         </article>
+
+<article class="card" data-open="asteroids">
+  <div class="card-body">
+    <h2>Asteroids</h2>
+    <p>Thrust, dodge, and shoot. Classic.</p>
+  </div>
+  <footer>Play →</footer>
+</article>
+
+<article class="card" data-open="simon">
+  <div class="card-body">
+    <h2>Memory (4-Color)</h2>
+    <p>Repeat the sequence. Speed ramps up.</p>
+  </div>
+  <footer>Play →</footer>
+</article>
+
+
       </div>
     </section>
 
@@ -207,6 +225,47 @@
         <p class="feedback">Space = jump • ↓ = duck</p>
       </div>
     </section>
+
+<section id="asteroids" class="view" aria-label="Asteroids">
+  <button class="back" data-view="home">← Home</button>
+  <h2>Asteroids</h2>
+  <div class="panel">
+    <div class="row" style="margin-bottom:10px">
+      <span class="meta">Score: <strong id="ast-score">0</strong></span>
+      <span class="meta">High: <strong id="ast-high">0</strong></span>
+      <button class="btn ghost sm" id="ast-reset">Reset High</button>
+      <span class="meta" style="margin-left:auto">Controls: ←/→ rotate • ↑ thrust • Space shoot • P pause</span>
+    </div>
+    <canvas id="ast-canvas" width="640" height="480" class="game-canvas tight"></canvas>
+  </div>
+</section>
+
+<section id="simon" class="view" aria-label="Memory (4-Color)">
+  <button class="back" data-view="home">← Home</button>
+  <h2>Memory (4-Color)</h2>
+  <div class="panel">
+    <div class="row" style="margin-bottom:10px">
+      <span class="meta">Round: <strong id="si-round">0</strong></span>
+      <span class="meta">Best: <strong id="si-best">0</strong></span>
+      <button class="btn" id="si-start">Start</button>
+      <button class="btn ghost" id="si-replay" disabled>Replay</button>
+      <button class="btn ghost" id="si-reset">Reset</button>
+    </div>
+
+    <div class="simon-wrap">
+      <div id="si-board" class="simon-board">
+        <button class="pad green"  data-i="0" aria-label="Green"></button>
+        <button class="pad red"    data-i="1" aria-label="Red"></button>
+        <button class="pad yellow" data-i="2" aria-label="Yellow"></button>
+        <button class="pad blue"   data-i="3" aria-label="Blue"></button>
+      </div>
+      <p class="feedback" id="si-status">Press Start to begin.</p>
+    </div>
+  </div>
+</section>
+
+
+
 
 
     <!-- Plaza hub -->
