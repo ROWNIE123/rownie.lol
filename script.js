@@ -1593,3 +1593,416 @@ if(reason==="bust"){
   obs.observe(plaza, { attributes:true });
 })();
 
+// ---------- Spin Reels (Slots) ----------
+(function slots(){
+  const gridEl   = document.getElementById("slots-grid");
+  if(!gridEl) return;
+  const spinBtn  = document.getElementById("slots-spin");
+  const betInput = document.getElementById("slots-bet");
+  const modeSel  = document.getElementById("slots-mode");
+  const statusEl = document.getElementById("slots-status");
+  const balEl    = document.getElementById("slots-balance");
+
+  // Shared wallet
+  const KEY = "wallet-sh";
+  const getWallet = () => Number(localStorage.getItem(KEY) || "10000");
+  const setWallet = (v) => localStorage.setItem(KEY, String(v));
+  const refresh   = () => balEl.textContent = getWallet();
+
+  refresh();
+
+  // Symbols (emoji + weights + multipliers)
+  // Higher weight = more common
+  const SYMBOLS = [
+    {icon:"💎", weight:2,  mult:50},
+    {icon:"⭐", weight:4,  mult:25},
+    {icon:"🔔", weight:6,  mult:10},
+    {icon:"🍒", weight:10, mult:5},
+    {icon:"🍋", weight:12, mult:4},
+    {icon:"🍀", weight:14, mult:3},
+  ];
+  // Build weighted bag
+  const BAG = [];
+  SYMBOLS.forEach(s => { for(let i=0;i<s.weight;i++) BAG.push(s.icon); });
+
+  // Helpers
+  const pick = () => BAG[(Math.random()*BAG.length)|0];
+  const iconMult = (icon) => (SYMBOLS.find(s=>s.icon===icon)?.mult || 0);
+
+  // Build 3×3 cells
+  const cells = [];
+  function build(){
+    gridEl.innerHTML = "";
+    for(let r=0;r<3;r++){
+      for(let c=0;c<3;c++){
+        const div = document.createElement("div");
+        div.className = "slot-cell";
+        div.dataset.r = r;
+        div.dataset.c = c;
+        div.textContent = pick();
+        gridEl.appendChild(div);
+        cells.push(div);
+      }
+    }
+  }
+  build();
+
+  function clearWins(){
+    cells.forEach(el => el.classList.remove("win"));
+  }
+  function setRowWin(r){
+    for(let c=0;c<3;c++){
+      const el = cells[r*3 + c];
+      el.classList.add("win");
+    }
+  }
+
+  // Evaluate paylines and compute total win
+  // mode: "1" => middle row only; "3" => top+middle+bottom
+  function evaluate(mode, bet){
+    clearWins();
+    const rows = (mode==="1") ? [1] : [0,1,2];
+    let total = 0;
+    let winsDesc = [];
+
+    for(const r of rows){
+      const a = cells[r*3 + 0].textContent;
+      const b = cells[r*3 + 1].textContent;
+      const c = cells[r*3 + 2].textContent;
+
+      if(a===b && b===c){
+        const mult = iconMult(a);
+        if(mult>0){
+          total += bet * mult;
+          setRowWin(r);
+          winsDesc.push(`${["Top","Middle","Bottom"][r]}: 3× ${a} → ${mult}×`);
+        }
+      }else if(a===b || b===c || a===c){
+        // any 2-of-a-kind pays 2× (per line)
+        total += bet * 2;
+        setRowWin(r);
+        winsDesc.push(`${["Top","Middle","Bottom"][r]}: 2 of a kind → 2×`);
+      }
+    }
+
+    return { total, winsDesc };
+  }
+
+  // Spin animation: fake reel spin by shuffling columns separately and stopping one by one
+  let spinning = false;
+
+  async function spin(){
+    if(spinning) return;
+
+    const bet = Math.max(1, Number(betInput.value)||0);
+    const mode = modeSel.value; // "1" or "3"
+    const stake = bet;          // bet per spin (we pay per winning line)
+    const w = getWallet();
+    if(stake > w){ statusEl.textContent = "Not enough balance."; return; }
+
+    // Deduct stake
+    setWallet(w - stake); refresh();
+
+    spinning = true;
+    clearWins();
+    statusEl.textContent = "Spinning…";
+
+    // Add spin animation class to columns, stop sequentially
+    const columns = [
+      [cells[0],cells[3],cells[6]], // col 0 (top to bottom)
+      [cells[1],cells[4],cells[7]],
+      [cells[2],cells[5],cells[8]],
+    ];
+
+    // per-column timers
+    const timers = [];
+
+    // Start animating all columns
+    columns.forEach((col, idx)=>{
+      col.forEach(el => el.classList.add("slot-spin"));
+      timers[idx] = setInterval(()=>{
+        // roll this column visually
+        const newTop = pick();
+        const newMid = pick();
+        const newBot = pick();
+        col[0].textContent = newTop;
+        col[1].textContent = newMid;
+        col[2].textContent = newBot;
+      }, 60);
+    });
+
+    // Stop columns one by one with a short delay
+    const stopCol = (idx, delay) => new Promise(res=>{
+      setTimeout(()=>{
+        clearInterval(timers[idx]);
+        // final settle for this column (choose final icons)
+        const final = [pick(), pick(), pick()];
+        columns[idx][0].textContent = final[0];
+        columns[idx][1].textContent = final[1];
+        columns[idx][2].textContent = final[2];
+        columns[idx].forEach(el => el.classList.remove("slot-spin"));
+        res();
+      }, delay);
+    });
+
+    await stopCol(0, 500 + Math.random()*200);
+    await stopCol(1, 350 + Math.random()*200);
+    await stopCol(2, 300 + Math.random()*200);
+
+    // Evaluate result
+    const { total, winsDesc } = evaluate(mode, bet);
+
+    // Credit winnings
+    if(total>0){ setWallet(getWallet() + total); refresh(); }
+
+    statusEl.textContent = total>0
+      ? `Win +${total} sh  ${winsDesc.length? "• " + winsDesc.join("  |  ") : ""}`
+      : "No win — try again.";
+
+    spinning = false;
+  }
+
+  spinBtn.addEventListener("click", spin);
+
+  // Keep balance fresh when this view opens
+  const obs = new MutationObserver(()=>{
+    if(document.getElementById("slots").classList.contains("is-active")){
+      refresh();
+    }
+  });
+  obs.observe(document.getElementById("slots"), { attributes:true });
+})();
+
+// ---------- Crash Curve (fixed cashout + restart) ----------
+(function crashGame(){
+  const canvas = document.getElementById("cr-canvas");
+  if(!canvas) return;
+  const ctx = canvas.getContext("2d");
+
+  const startBtn = document.getElementById("cr-start");
+  const cashBtn  = document.getElementById("cr-cashout");
+  const betInput = document.getElementById("cr-bet");
+  const riskSel  = document.getElementById("cr-risk");
+  const balEl    = document.getElementById("cr-balance");
+  const multiEl  = document.getElementById("cr-multi");
+  const statusEl = document.getElementById("cr-status");
+
+  // Shared wallet
+  const KEY = "wallet-sh", DEFAULT_BAL = 10000;
+  const getWallet = () => Number(localStorage.getItem(KEY) || DEFAULT_BAL);
+  const setWallet = v => localStorage.setItem(KEY, String(v));
+  const refresh   = () => balEl.textContent = getWallet();
+  refresh();
+
+  // Curve config
+  const k = 0.35; // growth rate (higher -> faster climb)
+  let t0 = 0, t = 0;
+
+  // Round state
+  let running = false;
+  let crashed = false;
+  let cashed  = false;
+  let crashAt = 0;  // multiplier where it will bust
+  let stake   = 0;  // bet taken up-front
+
+  // Aesthetic helpers
+  function setStatus(msg){ statusEl.textContent = msg; }
+  function setMulti(x, color){ 
+    multiEl.textContent = `${x.toFixed(2)}×`;
+    multiEl.classList.remove("green","red","pulse");
+    if(color) multiEl.classList.add(color);
+    multiEl.classList.add("pulse");
+    setTimeout(()=> multiEl.classList.remove("pulse"), 110);
+  }
+
+  // Risk → distribution of crash multiplier
+  function randCrashMult(risk){
+    const u = Math.random();
+    let base;
+    if(risk === "low"){
+      base = 1 + (Math.pow(u, 0.65) * 7);  // 1..8
+    }else if(risk === "high"){
+      base = 1 + (Math.pow(u, 2.2) * 3);   // 1..4
+    }else{
+      base = 1 + (Math.pow(u, 1.2) * 5);   // 1..6
+    }
+    if(Math.random() < 0.03) base = 8 + Math.random()*12; // rare 8..20
+    return Math.min(base, 50);
+  }
+
+  // Canvas coords
+  const W = canvas.width, H = canvas.height;
+  const PAD = 40;
+  const X0 = PAD, Y0 = H - PAD; // origin (left-bottom)
+  const XMAX = W - PAD, YMAX = PAD;
+
+  // Store the path to re-draw glowing curve
+  const path = [];
+
+  function resetCanvas(){
+    ctx.clearRect(0,0,W,H);
+    // grid
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255,255,255,.06)";
+    for(let x=X0; x<=XMAX; x+=60){
+      ctx.beginPath(); ctx.moveTo(x, YMAX); ctx.lineTo(x, Y0); ctx.stroke();
+    }
+    for(let y=Y0; y>=YMAX; y-=50){
+      ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(XMAX, y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawCurve(){
+    if(path.length < 2) return;
+    // glow underlay
+    ctx.save();
+    ctx.strokeStyle = "rgba(124,255,183,.28)";
+    ctx.lineWidth = 6;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    for(let i=0;i<path.length;i++){
+      const p = path[i];
+      if(i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // bright line
+    ctx.save();
+    const grad = ctx.createLinearGradient(X0,Y0, XMAX,YMAX);
+    grad.addColorStop(0, "#6ae3ff");
+    grad.addColorStop(1, "#7cffb7");
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for(let i=0;i<path.length;i++){
+      const p = path[i];
+      if(i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // current dot
+    const p = path[path.length-1];
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4.5, 0, Math.PI*2);
+    ctx.fillStyle = "#ffc960";
+    ctx.shadowColor = "rgba(0,0,0,.45)";
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function mOf(sec){ return Math.exp(k * sec); }
+
+  function toCanvas(sec, m){
+    const x = X0 + Math.min((sec*80), XMAX - X0);
+    const y = Y0 - Math.min( (Math.log(m) / Math.log(1.08)) * 6, Y0 - YMAX );
+    return { x, y };
+  }
+
+  function animate(now){
+    if(!running) return;                // <— stop immediately if round ended
+    if(!t0) t0 = now;
+    t = (now - t0) / 1000;
+
+    const m = mOf(t);
+    resetCanvas();
+    const pt = toCanvas(t, m);
+    path.push(pt);
+    drawCurve();
+
+    if(!crashed) setMulti(m, cashed ? "green" : null);
+
+    // crash check — if you already cashed, DO NOT bust the round
+    if(!crashed && m >= crashAt){
+      crashed = true;
+      if(!cashed){
+        setMulti(crashAt, "red");
+        setStatus(`Busted at ${crashAt.toFixed(2)}× — lost ${stake} sh`);
+      }else{
+        // silent end if already cashed
+        setStatus(`Round ended at ${crashAt.toFixed(2)}×`);
+      }
+      cashBtn.disabled = true;
+      running = false;
+      startBtn.disabled = false;        // <— allow re-bet
+      return;
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  function startRound(){
+    if(running) return;
+    const bet = Math.max(1, Number(betInput.value)||0);
+    const w = getWallet();
+    if(bet > w){ setStatus("Not enough balance."); return; }
+
+    // take stake up-front
+    setWallet(w - bet); refresh();
+
+    // setup
+    stake = bet; cashed = false; crashed = false; running = true;
+    crashAt = randCrashMult(riskSel.value);
+    path.length = 0;
+    t0 = 0; t = 0;
+    resetCanvas();
+    setStatus("Rising… cash out any time.");
+    multiEl.classList.remove("red","green");
+    setMulti(1.00);
+    cashBtn.disabled = false;
+    startBtn.disabled = true;
+
+    requestAnimationFrame(animate);
+  }
+
+  function cashout(){
+    if(!running || crashed || cashed) return;
+    // payout immediately at current multiplier and END ROUND NOW
+    const m = mOf(t);
+    const win = Math.floor(stake * m);
+    setWallet(getWallet() + win);
+    refresh();
+
+    cashed = true;
+    setMulti(m, "green");
+    setStatus(`Cashed out at ${m.toFixed(2)}×  →  +${win} sh`);
+
+    // end round right away so you can re-bet; stop animation
+    cashBtn.disabled = true;
+    running = false;
+    startBtn.disabled = false;
+  }
+
+  function resetUI(){
+    refresh();
+    resetCanvas();
+    setMulti(1.00);
+    setStatus("Place a bet and press Start.");
+    startBtn.disabled = false;
+    cashBtn.disabled = true;
+    running = false; crashed = false; cashed = false;
+    path.length = 0;
+    t0 = 0; t = 0;
+  }
+
+  // Events
+  startBtn.addEventListener("click", startRound);
+  cashBtn.addEventListener("click", cashout);
+
+  // Reset when view shows
+  const obs = new MutationObserver(()=>{
+    if(document.getElementById("crash").classList.contains("is-active")){
+      resetUI();
+    }
+  });
+  obs.observe(document.getElementById("crash"), { attributes:true });
+
+  // initial paint
+  resetUI();
+})();
