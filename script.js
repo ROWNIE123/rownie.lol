@@ -2006,3 +2006,546 @@ if(reason==="bust"){
   // initial paint
   resetUI();
 })();
+
+// ---------- Asteroids (canvas, wrap, thrust, split) ----------
+(function asteroids(){
+  const cvs = document.getElementById("ast-canvas");
+  if(!cvs) return;
+  const ctx = cvs.getContext("2d");
+
+  const scoreEl = document.getElementById("ast-score");
+  const highEl  = document.getElementById("ast-high");
+  const resetHi = document.getElementById("ast-reset");
+
+  // --- High score
+  const HI_KEY = "asteroids-high";
+  const getHigh = () => Number(localStorage.getItem(HI_KEY) || "0");
+  const setHigh = v => localStorage.setItem(HI_KEY, String(v));
+  highEl.textContent = getHigh();
+
+  // --- Sizing
+  const BASE_W = 640, BASE_H = 480, ASPECT = BASE_W/BASE_H;
+  function fitCanvas(){
+    const maxW = Math.min(cvs.parentElement.clientWidth - 2, 960);
+    const w = Math.min(BASE_W, maxW);
+    const h = Math.round(w / ASPECT);
+    cvs.width = w; cvs.height = h;
+  }
+  fitCanvas();
+  window.addEventListener("resize", fitCanvas);
+
+  // --- RNG helper
+  const R = (min,max)=> min + Math.random()*(max-min);
+  const RI = (min,max)=> Math.floor(R(min,max+1));
+
+  // --- Input
+  const keys = new Set();
+  window.addEventListener("keydown", e=>{
+    if(["ArrowLeft","ArrowRight","ArrowUp","Space"," ","w","a","d","W","A","D","p","P"].includes(e.key)) e.preventDefault();
+    keys.add(e.key);
+  });
+  window.addEventListener("keyup", e=> keys.delete(e.key));
+
+  // --- World
+  let ship, asteroids = [], bullets = [], particles = [];
+  let score = 0, lives = 3, level = 1;
+  let paused = false, running = false, last = 0;
+
+  // Scaling to current canvas
+  const sX = ()=> cvs.width/BASE_W;
+  const sY = ()=> cvs.height/BASE_H;
+
+  function resetGame(){
+    score = 0; lives = 3; level = 1; bullets = []; particles = [];
+    spawnShip();
+    spawnField(level);
+    updateHUD();
+    running = true; paused = false;
+  }
+
+  function spawnShip(){
+    ship = {
+      x: cvs.width/2, y: cvs.height/2,
+      vx: 0, vy: 0,
+      a: -Math.PI/2, // facing up
+      thrust: 0,
+      cooldown: 0,
+      inv: 0 // invincibility frames after hit
+    };
+  }
+
+  function spawnField(lv){
+    asteroids = [];
+    const count = Math.min(4 + lv, 8);
+    for(let i=0;i<count;i++){
+      // spawn away from ship
+      let x,y;
+      do {
+        x = R(0,cvs.width); y = R(0,cvs.height);
+      } while (Math.hypot(x-ship.x, y-ship.y) < 140);
+      asteroids.push(makeAsteroid(x,y, 3)); // size 3 = big
+    }
+  }
+
+  function makeAsteroid(x,y, size){
+    const speed = R(0.4, 1.0) * sX();
+    const dir = R(0, Math.PI*2);
+    const points = 10 + RI(0,5);
+    const radius = (size===3? 42 : size===2? 26 : 16) * sX();
+    // jagged polygon
+    const verts = [];
+    for(let i=0;i<points;i++){
+      const ang = (i/points)*Math.PI*2;
+      const r = radius * R(0.75, 1.25);
+      verts.push({x: Math.cos(ang)*r, y: Math.sin(ang)*r});
+    }
+    return {
+      x, y, vx: Math.cos(dir)*speed, vy: Math.sin(dir)*speed,
+      rot: R(-0.01,0.01), a: R(0,Math.PI*2),
+      size, radius, verts
+    };
+  }
+
+  function shoot(){
+    if(ship.cooldown>0 || ship.inv>0) return;
+    ship.cooldown = 10; // frames
+    const spd = 4.2 * sX();
+    const bx = ship.x + Math.cos(ship.a)*12*sX();
+    const by = ship.y + Math.sin(ship.a)*12*sX();
+    bullets.push({
+      x: bx, y: by,
+      vx: Math.cos(ship.a)*spd + ship.vx*0.3,
+      vy: Math.sin(ship.a)*spd + ship.vy*0.3,
+      life: 60 // frames
+    });
+  }
+
+  function explode(x,y, color="#ffc960"){
+    for(let i=0;i<16;i++){
+      particles.push({
+        x, y, vx: R(-2,2)*sX(), vy: R(-2,2)*sY(),
+        life: RI(18,36), color
+      });
+    }
+  }
+
+  function wrap(o){
+    if(o.x < -20) o.x = cvs.width+20;
+    if(o.x > cvs.width+20) o.x = -20;
+    if(o.y < -20) o.y = cvs.height+20;
+    if(o.y > cvs.height+20) o.y = -20;
+  }
+
+  function updateHUD(){
+    scoreEl.textContent = score;
+    highEl.textContent = getHigh();
+  }
+
+  // --- Main loop
+  function step(ts){
+    if(!running){ return; }
+    const dt = Math.min(33, ts - (last||ts)); // ms cap
+    last = ts;
+    if(!paused){
+      logic();
+      draw();
+    }
+    requestAnimationFrame(step);
+  }
+
+  function logic(){
+    // input → ship
+    const left  = keys.has("ArrowLeft") || keys.has("a") || keys.has("A");
+    const right = keys.has("ArrowRight")|| keys.has("d") || keys.has("D");
+    const up    = keys.has("ArrowUp")   || keys.has("w") || keys.has("W");
+    const fire  = keys.has(" ") || keys.has("Space");
+
+    if(keys.has("p") || keys.has("P")){
+      keys.delete("p"); keys.delete("P");
+      paused = !paused;
+    }
+
+    if(fire) shoot();
+
+    if(left)  ship.a -= 0.065;
+    if(right) ship.a += 0.065;
+    ship.thrust = up ? 0.12 * sX() : 0;
+
+    // physics
+    ship.vx += Math.cos(ship.a) * ship.thrust;
+    ship.vy += Math.sin(ship.a) * ship.thrust;
+    // drag
+    ship.vx *= 0.996; ship.vy *= 0.996;
+
+    ship.x += ship.vx; ship.y += ship.vy; wrap(ship);
+    if(ship.cooldown>0) ship.cooldown--;
+    if(ship.inv>0) ship.inv--;
+
+    // bullets
+    for(const b of bullets){
+      b.x += b.vx; b.y += b.vy; wrap(b);
+      b.life--;
+    }
+    bullets = bullets.filter(b=> b.life>0);
+
+    // asteroids
+    for(const a of asteroids){
+      a.x += a.vx; a.y += a.vy; a.a += a.rot; wrap(a);
+    }
+
+    // collisions bullets ↔ asteroids
+    for(let i=asteroids.length-1;i>=0;i--){
+      const a = asteroids[i];
+      for(let j=bullets.length-1;j>=0;j--){
+        const b = bullets[j];
+        if(Math.hypot(a.x-b.x, a.y-b.y) < a.radius){
+          bullets.splice(j,1);
+          asteroids.splice(i,1);
+          explode(a.x,a.y);
+          // score + split
+          score += (a.size===3? 20 : a.size===2? 50 : 100);
+          if(a.size>1){
+            asteroids.push(makeAsteroid(a.x, a.y, a.size-1));
+            asteroids.push(makeAsteroid(a.x, a.y, a.size-1));
+          }
+          break;
+        }
+      }
+    }
+
+    // collisions ship ↔ asteroids
+    if(ship.inv===0){
+      for(const a of asteroids){
+        if(Math.hypot(a.x-ship.x, a.y-ship.y) < a.radius*0.75){
+          // hit
+          explode(ship.x, ship.y, "#ff6a8b");
+          lives--;
+          ship.inv = 120;
+          ship.x = cvs.width/2; ship.y = cvs.height/2;
+          ship.vx = ship.vy = 0; ship.a = -Math.PI/2;
+          break;
+        }
+      }
+    }
+
+    // next wave?
+    if(asteroids.length===0){
+      level++;
+      spawnField(level);
+    }
+
+    // game over?
+    if(lives<=0){
+      running = false;
+      // update high
+      if(score > getHigh()) setHigh(score);
+      updateHUD();
+      // small delay then reset
+      setTimeout(()=>{
+        // soft reset to menu-like state
+        lives = 3; level = 1; bullets = []; particles=[];
+        spawnShip(); spawnField(level);
+        score = 0; running = true; paused = false;
+      }, 1200);
+    }
+
+    // particles
+    for(const p of particles){
+      p.x+=p.vx; p.y+=p.vy; p.life--;
+    }
+    particles = particles.filter(p=> p.life>0);
+
+    updateHUD();
+  }
+
+  function drawShip(){
+    ctx.save();
+    ctx.translate(ship.x, ship.y);
+    ctx.rotate(ship.a);
+    // glow if invincible
+    if(ship.inv>0){
+      ctx.shadowColor = "rgba(124,255,183,.55)";
+      ctx.shadowBlur = 18;
+    }
+    // flame
+    if(ship.thrust>0){
+      ctx.beginPath();
+      ctx.moveTo(-12*sX(), 4*sY());
+      ctx.lineTo(-18*sX(), 0);
+      ctx.lineTo(-12*sX(), -4*sY());
+      ctx.strokeStyle = "#ffc960";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    // body (triangle)
+    ctx.beginPath();
+    ctx.moveTo(12*sX(), 0);
+    ctx.lineTo(-10*sX(), 8*sY());
+    ctx.lineTo(-6*sX(), 0);
+    ctx.lineTo(-10*sX(), -8*sY());
+    ctx.closePath();
+    ctx.strokeStyle = "#e6eefc";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+
+    // stars background (subtle)
+    ctx.save();
+    ctx.fillStyle = "#0b0f18";
+    ctx.fillRect(0,0,cvs.width,cvs.height);
+    ctx.fillStyle = "rgba(255,255,255,.05)";
+    for(let i=0;i<40;i++){
+      const x=(i*53%cvs.width), y=(i*97%cvs.height);
+      ctx.fillRect(x, y, 1, 1);
+    }
+    ctx.restore();
+
+    // asteroids
+    ctx.strokeStyle = "#9fb6ff";
+    ctx.lineWidth = 2;
+    for(const a of asteroids){
+      ctx.save();
+      ctx.translate(a.x,a.y);
+      ctx.rotate(a.a);
+      ctx.beginPath();
+      for(let i=0;i<a.verts.length;i++){
+        const v=a.verts[i];
+        if(i===0) ctx.moveTo(v.x,v.y); else ctx.lineTo(v.x,v.y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // bullets
+    ctx.fillStyle = "#ffc960";
+    for(const b of bullets){
+      ctx.beginPath();
+      ctx.arc(b.x,b.y,2.2*sX(),0,Math.PI*2);
+      ctx.fill();
+    }
+
+    // particles
+    for(const p of particles){
+      ctx.globalAlpha = Math.max(0, p.life/36);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 2, 2);
+      ctx.globalAlpha = 1;
+    }
+
+    // ship
+    drawShip();
+
+    // lives (triangles)
+    let lifeX = 0;
+    for(let i=0;i<lives;i++){
+      ctx.save();
+      ctx.translate(12 + lifeX, 18);
+      ctx.rotate(-Math.PI/2);
+      ctx.beginPath();
+      ctx.moveTo(8,0);
+      ctx.lineTo(-6,6);
+      ctx.lineTo(-6,-6);
+      ctx.closePath();
+      ctx.strokeStyle = "#ffc960";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+      lifeX += 22;
+    }
+  }
+
+  // Button: reset high score
+  resetHi.addEventListener("click", ()=>{
+    setHigh(0); highEl.textContent = "0";
+  });
+
+  // Start running when view shows (and stop when you leave)
+  const view = document.getElementById("asteroids");
+  const obs = new MutationObserver(()=>{
+    if(view.classList.contains("is-active")){
+      // fresh start
+      fitCanvas();
+      resetGame();
+      requestAnimationFrame(step);
+    } else {
+      // stop loop when hidden to save CPU
+      running = false;
+    }
+  });
+  obs.observe(view, { attributes:true });
+
+  // If user opens page directly on asteroids view (rare), init
+  if(view.classList.contains("is-active")){
+    resetGame();
+    requestAnimationFrame(step);
+  }
+})();
+
+// ---------- Memory (4-Color Simon) ----------
+(function simon(){
+  const board  = document.getElementById("si-board");
+  if(!board) return;
+  const pads   = Array.from(board.querySelectorAll(".pad"));
+  const startB = document.getElementById("si-start");
+  const replayB= document.getElementById("si-replay");
+  const resetB = document.getElementById("si-reset");
+  const roundEl= document.getElementById("si-round");
+  const bestEl = document.getElementById("si-best");
+  const status = document.getElementById("si-status");
+
+  // Best score in localStorage
+  const BEST_KEY = "simon-best";
+  const getBest = () => Number(localStorage.getItem(BEST_KEY) || "0");
+  const setBest = (v) => localStorage.setItem(BEST_KEY, String(v));
+  bestEl.textContent = getBest();
+
+  // State
+  let seq = [];        // array of ints 0..3
+  let stepIdx = 0;     // how far the player has matched in this round
+  let playingBack = false;
+  let accepting   = false;
+  let round = 0;
+
+  // Timing (ramps up slightly as round increases)
+  const baseLight = 520;     // ms light on at early rounds
+  const baseGap   = 160;     // ms gap between steps
+  function lightTime(){ return Math.max(260, baseLight - round*10); }
+  function gapTime(){   return Math.max(90,  baseGap   - round*4); }
+
+  function setRound(r){
+    round = r;
+    roundEl.textContent = r;
+    // (Best is updated on game over using achieved=round-1)
+  }
+
+  function setUIBusy(busy){
+    startB.disabled = busy;
+    replayB.disabled = busy || seq.length===0; // replay stays available only during a round
+    pads.forEach(p => p.disabled = busy);
+  }
+
+  function flashPad(i, dur){
+    return new Promise(res=>{
+      const el = pads[i];
+      el.classList.add("active");
+      setTimeout(()=>{
+        el.classList.remove("active");
+        setTimeout(res, gapTime());
+      }, dur);
+    });
+  }
+
+  async function playback(){
+    playingBack = true;
+    accepting = false;
+    setUIBusy(true);
+    status.textContent = `Watch the sequence…`;
+    await new Promise(r=> setTimeout(r, 300));
+    for(let i=0;i<seq.length;i++){
+      await flashPad(seq[i], lightTime());
+    }
+    playingBack = false;
+    accepting = true;
+    setUIBusy(false);
+    status.textContent = `Your turn.`;
+    stepIdx = 0;
+  }
+
+  function addStep(){
+    seq.push(Math.floor(Math.random()*4));
+  }
+
+  function gameOver(wrongIndex=-1){
+    accepting = false;
+    playingBack = false;
+
+    // Score achieved is the last fully completed round
+    const achieved = Math.max(0, round - 1);
+    if(achieved > getBest()){
+      setBest(achieved);
+      bestEl.textContent = achieved;
+    }
+
+    // brief red glow on the wrong pad (if known)
+    if(wrongIndex>=0){
+      pads[wrongIndex].classList.add("error");
+      setTimeout(()=> pads[wrongIndex].classList.remove("error"), 380);
+    }
+
+    // Reset round/sequence and UI
+    seq = [];
+    stepIdx = 0;
+    setRound(0);
+    startB.disabled = false;
+    replayB.disabled = true;       // cannot replay after a loss
+    status.textContent = "Wrong! Game over. Press Start to try again.";
+  }
+
+  function startGame(){
+    // fresh game
+    seq = [];
+    setRound(0);
+    status.textContent = "Memorize the pattern…";
+    addStep();
+    setRound(1);
+    playback();
+  }
+
+  function replay(){
+    if(seq.length===0 || playingBack) return;
+    playback();
+  }
+
+  function handlePress(i){
+    if(!accepting) return;
+
+    // quick visual press feedback
+    pads[i].classList.add("active");
+    setTimeout(()=> pads[i].classList.remove("active"), 140);
+
+    if(i === seq[stepIdx]){
+      stepIdx++;
+      if(stepIdx === seq.length){
+        // round complete → advance
+        accepting = false;
+        status.textContent = "Nice! Next round…";
+        addStep();
+        setRound(round+1);
+        playback();
+      }
+    } else {
+      // WRONG => immediate game over (no replay of same round)
+      gameOver(i);
+    }
+  }
+
+  // Events
+  pads.forEach(p => p.addEventListener("click", ()=> handlePress(Number(p.dataset.i))));
+  startB.addEventListener("click", startGame);
+  replayB.addEventListener("click", replay);
+  resetB.addEventListener("click", ()=>{
+    setBest(0); bestEl.textContent = "0";
+    seq=[]; setRound(0); stepIdx=0; status.textContent="Press Start to begin.";
+  });
+
+  // When view opens, reset light UI
+  const view = document.getElementById("simon");
+  const obs = new MutationObserver(()=>{
+    if(view.classList.contains("is-active")){
+      status.textContent = "Press Start to begin.";
+      roundEl.textContent = "0";
+      bestEl.textContent = getBest();
+      startB.disabled = false;
+      replayB.disabled = (seq.length===0);
+      pads.forEach(p=> p.disabled=false);
+    }
+  });
+  obs.observe(view, { attributes:true });
+})();
+
+
