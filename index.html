@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>rownie.lol</title>
+  <title></title>
   <meta name="description" content="A playground of activites.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -248,6 +248,21 @@
           </div>
           <footer>Open →</footer>
         </article>
+<article class="card plaza" data-open="slots">
+  <div class="card-body">
+    <h2>Spin Reels</h2>
+    <p>Classic 1-Line or Fruit 3-Line</p>
+  </div>
+  <footer>Open →</footer>
+</article>
+<article class="card plaza" data-open="crash">
+  <div class="card-body">
+    <h2>Crash Curve</h2>
+    <p>Ride the multiplier. Cash out in time!</p>
+  </div>
+  <footer>Open →</footer>
+</article>
+
       </div>
     </section>
 
@@ -385,6 +400,73 @@
 </div>
 
     </section>
+
+
+<section id="slots" class="view" aria-label="Slot Machine">
+  <button class="back" data-view="plaza">← Plaza</button>
+  <h2>Spin Reels</h2>
+  <div class="panel">
+    <div class="row" style="margin-bottom:10px">
+      <label>Bet:
+        <input id="slots-bet" type="number" min="1" value="100" style="width:110px"/>
+      </label>
+      <label>Mode:
+        <select id="slots-mode">
+          <option value="1">Classic 1-Line</option>
+          <option value="3" selected>Fruit 3-Line</option>
+        </select>
+      </label>
+      <button class="btn" id="slots-spin">Spin</button>
+      <span class="meta">Balance: <strong id="slots-balance">0</strong> sh</span>
+    </div>
+
+    <div class="slots-wrap">
+      <div class="slots-grid" id="slots-grid">
+        <!-- 3×3 grid, cells filled by JS -->
+      </div>
+      <div class="paylines" id="slots-paylines">
+        <span class="line-tag top">Top</span>
+        <span class="line-tag mid">Middle</span>
+        <span class="line-tag bot">Bottom</span>
+      </div>
+    </div>
+
+    <p class="feedback" id="slots-status">Choose a mode and press Spin.</p>
+  </div>
+</section>
+
+<section id="crash" class="view" aria-label="Crash Curve">
+  <button class="back" data-view="plaza">← Plaza</button>
+  <h2>Crash Curve</h2>
+  <div class="panel">
+    <div class="row" style="margin-bottom:10px">
+      <label>Bet:
+        <input id="cr-bet" type="number" min="1" value="100" style="width:110px"/>
+      </label>
+      <label>Risk:
+        <select id="cr-risk">
+          <option value="low">Low</option>
+          <option value="med" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+      </label>
+      <button class="btn" id="cr-start">Start</button>
+      <button class="btn ghost" id="cr-cashout" disabled>Cash out</button>
+      <span class="meta">Balance: <strong id="cr-balance">0</strong> sh</span>
+    </div>
+
+    <div class="cr-wrap">
+      <canvas id="cr-canvas" width="560" height="340" class="game-canvas tight"></canvas>
+      <div class="cr-hud">
+        <div id="cr-multi" class="cr-multi">1.00×</div>
+        <div id="cr-status" class="cr-status">Place a bet and press Start.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
     
     <!-- About -->
     <section id="about" class="view" aria-label="About Page">
