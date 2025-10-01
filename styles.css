@@ -403,3 +403,95 @@ input[type="color"]{ width:44px; height:36px; border:1px solid rgba(255,255,255,
 .plaza-wallet .amount{ margin-right:auto }
 .btn.sm{ padding:6px 10px; border-radius:8px; font-size:14px; box-shadow:none }
 
+/* Slots (Spin Reels) */
+.slots-wrap{
+  display:grid; gap:10px; justify-items:center;
+}
+.slots-grid{
+  display:grid;
+  grid-template-columns: repeat(3, 86px);
+  grid-template-rows: repeat(3, 86px);
+  gap:10px;
+  padding:10px;
+  border-radius:16px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  outline:1px solid rgba(255,255,255,.08);
+}
+.slot-cell{
+  width:86px; height:86px; display:grid; place-items:center;
+  border-radius:12px;
+  background:#0f1118;
+  border:1px solid rgba(255,255,255,.08);
+  font-size:34px;
+  box-shadow: inset 0 0 14px rgba(0,0,0,.35);
+}
+.slot-cell.win{
+  outline:2px solid var(--gold);
+  box-shadow: 0 0 18px rgba(255,201,96,.35), inset 0 0 14px rgba(0,0,0,.35);
+}
+
+/* spin animation (simple blur/pulse while spinning) */
+.slot-spin{
+  animation: slotPulse .22s linear infinite;
+  filter: blur(0.5px) brightness(1.1);
+}
+@keyframes slotPulse{
+  0%{ transform: translateY(0) }
+  50%{ transform: translateY(2px) }
+  100%{ transform: translateY(0) }
+}
+
+/* Payline labels (just to show which lines can win) */
+.paylines{
+  display:flex; gap:10px; opacity:.8; font-size:14px;
+}
+.paylines .line-tag{
+  padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.12);
+}
+.paylines .top{ background:rgba(106,227,255,.10); color:#6ae3ff }
+.paylines .mid{ background:rgba(124,255,183,.10); color:#7cffb7 }
+.paylines .bot{ background:rgba(255,106,139,.10); color:#ff6a8b }
+
+@media (max-width: 520px){
+  .slots-grid{
+    grid-template-columns: repeat(3, 76px);
+    grid-template-rows: repeat(3, 76px);
+  }
+  .slot-cell{ width:76px; height:76px; font-size:30px }
+}
+
+/* Crash (Crash Curve) */
+.cr-wrap{
+  position:relative;
+  display:grid;
+  justify-items:center;
+  align-items:center;
+  background: radial-gradient(600px 260px at 50% 100%, rgba(124,255,183,.08), transparent 60%),
+              radial-gradient(600px 260px at 20% 0%, rgba(106,227,255,.10), transparent 60%),
+              #0b0f18;
+  border-radius:16px;
+  outline:1px solid rgba(255,255,255,.06);
+  padding:10px;
+}
+#cr-canvas{
+  width:100%; max-width: 560px; height:auto; background: transparent;
+}
+.cr-hud{
+  position:absolute; inset:0;
+  display:grid; align-content:space-between; justify-items:center;
+  pointer-events:none; padding:12px;
+}
+.cr-multi{
+  margin-top:6px;
+  font-size: 36px; font-weight: 800;
+  letter-spacing: .5px;
+  text-shadow: 0 6px 18px rgba(0,0,0,.45);
+  transition: transform .12s ease;
+}
+.cr-multi.pulse{ transform: scale(1.04); }
+.cr-status{
+  margin-bottom:6px; font-size: 14px; opacity:.9; color: var(--muted);
+}
+.cr-multi.green{ color:#7cffb7; }
+.cr-multi.red{ color:#ff6a8b; }
+
