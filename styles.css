@@ -495,3 +495,51 @@ input[type="color"]{ width:44px; height:36px; border:1px solid rgba(255,255,255,
 .cr-multi.green{ color:#7cffb7; }
 .cr-multi.red{ color:#ff6a8b; }
 
+/* Asteroids HUD */
+#ast-canvas{ background:#0b0f18 }
+.ast-life{
+  display:inline-block; width:14px; height:14px; margin-left:6px;
+  border-left:7px solid #ffc960; border-top:7px solid transparent; border-bottom:7px solid transparent;
+  transform: rotate(-90deg) translateY(-1px);
+}
+
+/* Memory (4-Color) */
+.simon-wrap{ display:grid; gap:10px; justify-items:center }
+.simon-board{
+  display:grid; gap:12px;
+  grid-template-columns: repeat(2, minmax(90px, 1fr));
+  width: min(420px, 90%); 
+  aspect-ratio: 1 / 1;         /* perfect square */
+}
+.pad{
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;
+  box-shadow: inset 0 0 24px rgba(0,0,0,.25);
+  cursor:pointer;
+  outline:none;
+  transition: transform .06s ease, filter .06s ease, box-shadow .12s ease;
+}
+.pad:active{ transform: scale(.98); }
+.pad.green { background:#1d3b2a; }
+.pad.red   { background:#3b1d28; }
+.pad.yellow{ background:#3a381c; }
+.pad.blue  { background:#1d2e3b; }
+
+.pad.active.green  { filter: brightness(1.6); box-shadow: 0 0 18px rgba(124,255,183,.55); }
+.pad.active.red    { filter: brightness(1.6); box-shadow: 0 0 18px rgba(255,106,139,.55); }
+.pad.active.yellow { filter: brightness(1.6); box-shadow: 0 0 18px rgba(255,223,96,.55); }
+.pad.active.blue   { filter: brightness(1.6); box-shadow: 0 0 18px rgba(106,227,255,.55); }
+
+@media (max-width: 520px){
+  .simon-board{ gap:10px; width: min(360px, 94%); }
+  .pad{ border-radius:14px; }
+}
+
+/* Memory wrong-press glow */
+.pad.error{
+  filter: brightness(1.5);
+  box-shadow: 0 0 18px rgba(255,106,139,.6);
+}
+
+
+
